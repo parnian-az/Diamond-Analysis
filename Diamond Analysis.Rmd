@@ -1,0 +1,226 @@
+---
+title: "Diamonds Analysis"
+author: "Parnian Azimzadeh"
+date: "4/15/2022"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r Part 1, echo=TRUE}
+#Analyzing "Price" properties
+library(ggplot2)
+data("diamonds")
+attach(diamonds)
+
+boxplot(price)
+max_line = (summary(price)[5] - summary(price)[2])*1.5 #Interquartile range
+max_line = unname(max_line)
+outliers_percentage = paste(round(sum(price>max_line)/length(price),digits = 4)*100,"%")
+summary(price)
+paste("The percentage of the outliers:",outliers_percentage)
+```
+
+```{r Part 2, echo=TRUE}
+#Finding an appropriate number of intervals for the histogram
+hist(price, col = "burlywood1")
+hist(price, col = "burlywood1",breaks = 50)
+hist(price, col = "burlywood1", breaks = 100)
+hist(price, col = "burlywood1", breaks = 150)
+
+hist(price, col = "burlywood1", breaks = 50, freq = F)
+lines(density(price), lwd = 2, col = 'deeppink4')
+```
+
+```{r Part 3, echo=TRUE}
+#Analyzing "Color" properties
+c = summary(color)
+print("Colors and their frequency:")
+print(c)
+max_color = names(c)[which(c == max(c))]
+paste("Grade", max_color, "is the most repeated one among the colors.")
+c= unname(c)
+freq = data.frame(name = names(summary(color)), value = round(c/length(color)*100,digits = 2))
+print(freq)
+
+plot1 = ggplot(freq,aes(name,value,fill=name)) +
+  geom_bar(stat = "identity", color = 'black') +
+  geom_text(aes(label = signif(value)), nudge_y = 2) +
+  theme_light()+
+  ggtitle("Percentage of each Color")+
+  scale_fill_brewer(palette = "Purples")
+plot1
+
+```
+
+
+
+```{r Part 4, echo=TRUE}
+#Analyzing "Cut" and "Price" relation
+boxplot(depth~cut,col = rainbow(5),main = "Measuring the relation between depth and cut")
+library(dplyr)
+cut_and_depth = diamonds %>% group_by(cut) %>% summarise(depth_mean = mean(depth))
+max_depth = cut_and_depth[1,which(cut_and_depth[2] == max(cut_and_depth[2]))]
+paste("Maximum average depth belongs to",max_depth$cut, "cut group")
+
+```
+
+
+
+```{r Part 5, echo=TRUE}
+#Determining the "Price" distribution
+diamonds %>%
+  ggplot(aes(x=(price))) +
+  geom_histogram(stat="bin",binwidth= 500) +
+  facet_wrap(~cut, scales = "free")+
+  theme_light()+
+  scale_fill_discrete()
+```
+
+
+```{r Part 6, echo=TRUE}
+#A plot to demonstrate the relation between "Cut" and "Color" of the diamonds
+table(color,cut)
+barplot(table(cut,color),legend.text = T)
+```
+
+
+```{r Part 7, echo=TRUE}
+#Scatter plot to determine the relation between "Carat" and "Price"
+#Adding jittering for better analysis (for diamonds cheaper than $1000)
+df = data.frame(Carat = carat,Prices = price)
+plot2 = ggplot(df,aes(x = Carat,y = Prices,color = Prices))+
+  geom_point()+
+  theme_light()+
+  scale_color_gradient(low="blue", high="orange")+
+  ggtitle("Price and Carat correlation analysis")
+plot2
+
+df2 = subset(df,price<=1000)
+plot3 = ggplot(df2,aes(x = Carat,y = Prices,color = Prices))+
+  geom_point()+
+  theme_light()+
+  scale_color_gradient(low="slategray2", high="navyblue")+
+  ggtitle("Price and Carat correlation analysis (0-1000$)")
+plot3
+
+plot4 = ggplot(df2,aes(x = Carat,y = Prices,color = Prices))+
+  geom_point(position = 'jitter')+
+  theme_light()+
+  scale_color_gradient(low="slategray2", high="navyblue")+
+  ggtitle("Price and Carat correlation analysis (0-1000$)")
+plot4
+
+```
+
+
+
+```{r Part 8, echo=TRUE}
+#Analyzing the relation between "Carat" and "Price" on the basis of "Cut"
+df3 = data.frame(carat,price,cut)
+ggplot(df3, aes(x=carat, y=cut,color = price)) + 
+  geom_point(aes(size=price),alpha = 1/5)+
+  theme_light()+
+  scale_color_gradient(low="lightblue", high="navyblue")
+
+```
+
+
+
+```{r Part 9, echo=TRUE}
+#Analyzing the relation between "Carat" and "Price" on the basis of "Clarity" (normal scale and log)
+df4 = data.frame(carat,price,clarity)
+ggplot(df4, aes(x= carat, y=price,color = clarity)) + 
+  geom_point()+
+  theme_light()
+
+ggplot(df4, aes(x= log(carat), y=log(price),color = clarity)) + 
+  geom_point()+
+  theme_light()
+
+```
+
+
+```{r Part 10-1, echo=TRUE}
+#It is supposed that the carat of diamonds has a linear relation with the diamond's dimensions. In this part, we measure this assumption's accuracy.
+df_dim = data.frame(x,y,z,carat)
+ggplot(df_dim, aes(x = x, y = y,color=carat)) + 
+  geom_point(aes(size = carat))+
+  theme_light()
+
+```
+
+
+```{r Part 10-2, echo=TRUE}
+#Analyzing the relation among "Cut", "Color", and "Clarity" (all three are qualitative variable)
+ggplot(diamonds) +
+  geom_bar(aes(x=color, fill=clarity),position = "dodge") +
+  facet_wrap(~cut)+
+  theme_replace()
+```
+
+
+```{r Part 11, echo=TRUE}
+#Heat map for measuring correlation between "Cut" and "Color"
+cut_and_color = proportions(table(color,cut),"cut")
+df5 = data.frame(cut_and_color)
+colnames(df5) = c("Cut","Color","value")
+df5$value=round(df5$value,3)
+
+ggplot(df5, aes(x = Cut, y = Color, fill = value)) +
+  geom_tile(color = "white",lwd = 0.75,linetype = 1)+
+  scale_fill_gradient(low = "aquamarine1", high = "aquamarine4")+
+  geom_text(aes(label = value), color = "white", size = 4)
+
+chisq.test(table(cut,color))
+```
+
+
+```{r Part 12, echo=TRUE}
+#Honest Significance difference (Tukey) between "Cut" and "Price"
+ggplot(diamonds,aes(x=price,y=cut, color=cut)) +
+  geom_boxplot()
+
+fair = data.frame(name ="fair",value = subset(diamonds,cut=='Fair')$price)
+good = data.frame(name = "good",value = subset(diamonds,cut=='Good')$price)
+very_good = data.frame(name = "very good",value = subset(diamonds,cut=='Very Good')$price)
+premium = data.frame(name = "premium",value = subset(diamonds,cut=='Premium')$price)
+ideal = data.frame(name = "ideal",value = subset(diamonds,cut=='Ideal')$price)
+my_data = rbind(fair,good,very_good,premium,ideal)
+
+AN = aov(value~name,data = my_data)
+summary(AN)
+par(mfrow= c( 2,2))
+plot(AN)
+par(mfrow =c( 1,1))
+
+kruskal.test(value~name,data = my_data)
+
+TukeyHSD(AN)
+plot(TukeyHSD(AN))
+
+```
+
+```{r Part 13, echo=TRUE}
+#Welch Two Sample t-test for "Fair" and "Good" cut levels
+carat_filtered =subset(diamonds,carat<0.5)
+price_fair = subset(carat_filtered,cut == "Fair")$price
+price_good = subset(carat_filtered,cut == "Good")$price
+ifelse(var.test(price_fair, price_good,alternative ="two.sided")$p.value<0.05,"not equal variances","equal variances")
+t.test(price_fair, price_good, alternative = "two.sided")
+
+```
+
+
+```{r Part 14, echo=TRUE}
+#The proportion of "Fair" and "Good" cut levels (for diamonds more expensive than $1000)
+#2-sample test for equality of proportions with continuity correction
+fair_success = sum(price_fair>1000)
+good_success = sum(price_good>1000)
+prop.test(c(fair_success,good_success),c(length(price_fair),length(price_good)),alternative = "two.sided")
+
+```
+
